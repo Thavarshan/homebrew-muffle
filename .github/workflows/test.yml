@@ -24,8 +24,7 @@ jobs:
         run: |
           latest="$(gh release list -R Thavarshan/muffle --limit 20 \
             --json tagName,isDraft,isPrerelease \
-            --jq '[.[] | select(.isDraft == false and \
-              .isPrerelease == false)] | first | .tagName')"
+            --jq '[.[] | select(.isDraft == false and .isPrerelease == false)] | first | .tagName')"
           test -n "$latest"
           [[ "$latest" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           version="${latest#v}"
