@@ -1,8 +1,8 @@
 class Muffle < Formula
   desc "Suppress successful command output and show failure details"
   homepage "https://github.com/Thavarshan/muffle"
-  url "https://github.com/Thavarshan/muffle/archive/refs/tags/v0.1.1.tar.gz"
-  sha256 "ab908cd4f939ef5b12edd38f97af8400711bb52d267bee334c82ccc34decae2b"
+  url "https://github.com/Thavarshan/muffle/archive/refs/tags/v0.1.2.tar.gz"
+  sha256 "14da66c1f20f90dd5d4e3e5c02c15dbfe5f2bcdecb5202c01b793c602f969eee"
   license "MIT"
 
   depends_on "cmake" => :build
@@ -16,7 +16,7 @@ class Muffle < Formula
   end
 
   test do
-    assert_match "muffle 0.1.1", shell_output("#{bin}/muffle --version")
+    assert_match "muffle 0.1.2", shell_output("#{bin}/muffle --version")
     output = shell_output(
       "#{bin}/muffle -- sh -c 'echo expected-failure; exit 42' 2>&1", 42
     )
