@@ -1,0 +1,70 @@
+name: Test formula
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  formula:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Update to latest upstream release
+        if: >-
+          github.event_name == 'schedule' ||
+          github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest="$(gh release list -R Thavarshan/muffle --limit 20 \
+            --json tagName,isDraft,isPrerelease \
+            --jq '[.[] | select(.isDraft == false and \
+              .isPrerelease == false)] | first | .tagName')"
+          test -n "$latest"
+          [[ "$latest" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          version="${latest#v}"
+          archive="$RUNNER_TEMP/muffle-source.tar.gz"
+          source_base="https://github.com/Thavarshan/muffle/archive/refs/tags"
+          source_url="${source_base}/${latest}.tar.gz"
+          curl --fail --location --silent --show-error \
+            "$source_url" --output "$archive"
+          digest="$(shasum -a 256 "$archive" | cut -d ' ' -f 1)"
+          python3 scripts/update_formula.py "$version" "$digest"
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          bot_email="41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "$bot_email"
+          git add Formula/muffle.rb
+          git commit -m "chore: update muffle formula to ${version}"
+      - name: Create local Homebrew tap
+        run: |
+          brew tap --custom-remote Thavarshan/muffle \
+            "file://$GITHUB_WORKSPACE"
+      - name: Trust the maintained formula
+        run: brew trust --formula Thavarshan/muffle/muffle
+      - name: Audit formula
+        run: brew audit --strict --formula Thavarshan/muffle/muffle
+      - name: Check Ruby style
+        run: brew style Thavarshan/muffle/muffle
+      - name: Install formula from source
+        run: brew install --build-from-source Thavarshan/muffle/muffle
+      - name: Test installed formula
+        run: brew test Thavarshan/muffle/muffle
+      - name: Verify uninstall
+        run: brew uninstall muffle
+      - name: Publish tested formula update
+        if: >-
+          github.event_name == 'schedule' ||
+          github.event_name == 'workflow_dispatch'
+        run: |
+          if [[ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]]; then
+            git push origin HEAD:main
+          fi
